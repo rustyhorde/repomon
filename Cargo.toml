@@ -1,10 +1,11 @@
 [package]
-name = "repomon"
-version = "0.1.0"
 authors = ["Jason Ozias <jason.ozias@gmail.com>"]
 license = "MIT/Apache-2.0"
+name = "repomon"
 readme = "README.md"
+version = "0.1.0"
 
 [dependencies]
 clap = "2.29.0"
 error-chain = "0.11.0"
+git2 = "0.6.9"

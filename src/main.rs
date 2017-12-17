@@ -8,9 +8,11 @@
 
 //! `repomon` 0.1.0
 #![deny(missing_docs)]
-extern crate clap;
 #[macro_use]
 extern crate error_chain;
+
+extern crate clap;
+extern crate git2;
 
 mod error;
 mod run;

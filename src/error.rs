@@ -9,6 +9,7 @@
 //! `repomon` errors
 error_chain!{
     foreign_links {
+        Git2(::git2::Error);
         Io(::std::io::Error);
     }
 }
