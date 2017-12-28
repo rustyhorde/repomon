@@ -14,6 +14,7 @@ extern crate error_chain;
 extern crate clap;
 extern crate git2;
 
+mod branch;
 mod error;
 mod run;
 

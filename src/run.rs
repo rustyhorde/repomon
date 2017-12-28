@@ -7,13 +7,20 @@
 // modified, or distributed except according to those terms.
 
 //! `repomon` runtime
+use branch;
 use clap::{App, Arg};
 use error::Result;
-use git2::{self, BranchType, CredentialType, FetchOptions, FetchPrune, Progress, RemoteCallbacks, Repository, Status, StatusOptions};
+use git2::{self, BranchType, CredentialType, FetchOptions, FetchPrune, Progress, RemoteCallbacks,
+           Repository, Status, StatusOptions};
 use git2::Cred;
 use std::io::{self, Write};
 
-fn check_creds(_url: &str, username: Option<&str>, cred_type: CredentialType) -> ::std::result::Result<Cred, git2::Error> {
+/// Check credentials for connecting to remote.
+fn check_creds(
+    _url: &str,
+    username: Option<&str>,
+    cred_type: CredentialType,
+) -> ::std::result::Result<Cred, git2::Error> {
     if cred_type.contains(git2::SSH_KEY) {
         Cred::ssh_key_from_agent(username.unwrap_or(""))
     } else {
@@ -21,16 +28,20 @@ fn check_creds(_url: &str, username: Option<&str>, cred_type: CredentialType) ->
     }
 }
 
+/// Progress remote callback.
+#[cfg(feature = "cargo-clippy", allow(needless_pass_by_value))]
 fn progress(progress: Progress) -> bool {
     writeln!(io::stdout(), "{}", progress.received_objects()).unwrap_or(());
     true
 }
 
+/// Side band remote callback.
 fn side_band(text: &[u8]) -> bool {
     writeln!(io::stdout(), "{}", String::from_utf8_lossy(text)).unwrap_or(());
     true
 }
 
+/// Convert a status to a composite string.
 fn status_out(status: &Status, out: &mut String) -> Result<()> {
     let mut statuses = Vec::new();
 
@@ -104,9 +115,7 @@ pub fn run() -> Result<i32> {
                 .required(true)
                 .default_value(".repomon.toml"),
         )
-        .arg(
-            Arg::with_name("repo").default_value(".")
-        )
+        .arg(Arg::with_name("repo").default_value("."))
         .get_matches();
 
     let repo = Repository::discover(matches.value_of("repo").ok_or("")?)?;
@@ -125,17 +134,59 @@ pub fn run() -> Result<i32> {
     fetch_opts.remote_callbacks(rcb);
     fetch_opts.prune(FetchPrune::On);
 
-    for branch_res in repo.branches(Some(BranchType::Local))? {
+    let master_oid = branch::get_oid_by_branch_name(&repo, "master", Some(BranchType::Local))?;
+    let origin_master_oid =
+        branch::get_oid_by_branch_name(&repo, "origin/master", Some(BranchType::Remote))?;
+    let (ahead, behind) = repo.graph_ahead_behind(master_oid, origin_master_oid)?;
+
+    if ahead > 0 {
+        writeln!(
+            io::stdout(),
+            "Your branch is ahead of '{}' by {} commit(s)",
+            "origin/master",
+            ahead
+        )?;
+    } else if behind > 0 {
+        writeln!(
+            io::stdout(),
+            "Your branch is behind '{}' by {} commit(s)",
+            "origin/master",
+            behind
+        )?;
+    } else {
+        writeln!(
+            io::stdout(),
+            "Your branch is up to date with '{}'",
+            "origin/master"
+        )?;
+    }
+
+    for branch_res in repo.branches(None)? {
         let (branch, _) = branch_res?;
         writeln!(io::stdout(), "Branch: {}", branch.name()?.ok_or("No name")?)?;
         writeln!(io::stdout(), "Branch is head: {}", branch.is_head())?;
+        writeln!(
+            io::stdout(),
+            "Branch OID: {}",
+            branch.get().target().ok_or("No OID")?
+        )?;
     }
     for status in statuses.iter() {
         let mut status_str = String::new();
         status_out(&status.status(), &mut status_str)?;
-        writeln!(io::stdout(), "Path: {}, {}", status.path().unwrap_or("''"), status_str)?;
+        writeln!(
+            io::stdout(),
+            "Path: {}, {}",
+            status.path().unwrap_or("''"),
+            status_str
+        )?;
     }
 
-    repo.find_remote("origin")?.fetch(&["master"], Some(&mut fetch_opts), None)?;
+    for remote_opt in repo.remotes()?.iter() {
+        if let Some(remote) = remote_opt {
+            repo.find_remote(remote)?
+                .fetch(&["master"], Some(&mut fetch_opts), None)?;
+        }
+    }
     Ok(0)
 }
