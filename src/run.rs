@@ -29,7 +29,7 @@ fn check_creds(
 }
 
 /// Progress remote callback.
-#[cfg(feature = "cargo-clippy", allow(needless_pass_by_value))]
+#[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
 fn progress(progress: Progress) -> bool {
     writeln!(io::stdout(), "{}", progress.received_objects()).unwrap_or(());
     true
