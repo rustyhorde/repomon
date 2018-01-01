@@ -1,4 +1,4 @@
-// Copyright (c) 2017 repomon-config developers
+// Copyright (c) 2017 repomon developers
 //
 // Licensed under the Apache License, Version 2.0
 // <LICENSE-APACHE or http://www.apache.org/licenses/LICENSE-2.0> or the MIT
