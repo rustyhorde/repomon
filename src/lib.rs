@@ -17,7 +17,7 @@
 //! # extern crate repomon;
 //! # extern crate toml;
 //! #
-//! # use repomon::{read_toml, Branches};
+//! # use repomon::{read_toml, Repomon};
 //! # use std::io::Cursor;
 //! #
 //! # mod error {
@@ -31,44 +31,51 @@
 //! #     }
 //! # }
 //! #
-//! # fn main() {}
+//! # fn main() {
+//! #     read().expect("")
+//! # }
 //! #
 //! # fn read() -> error::Result<()> {
-//!     let test_toml = r#"[[branch.blah]]
-//!     name = "origin/master"
-//!     interval = "1m"
+//!     let test_toml = r#"basedir = "/home/jozias/projects"
 //!
-//!     [[branch.repomon]]
-//!     name = "origin/master"
-//!     interval = "1m"
+//!     [[repos.ar2.remotes]]
+//!     name = "origin"
+//!     url = "jozias@jasonozias.com:repos/ar2.git"
 //!
-//!     [[branch.repomon]]
-//!     name = "origin/feature/testing"
+//!     [[repos.ar2.branch]]
+//!     name = "master"
 //!     interval = "1m"
+//!     remotes = ["origin"]
 //!
-//!     [[branch.repomon-config]]
-//!     name = "origin/master"
+//!     [[repos.repomon.remotes]]
+//!     name = "origin"
+//!     url = "jozias@jasonozias.com:repos/repomon.git"
+//!
+//!     [[repos.repomon.remotes]]
+//!     name = "gh"
+//!     url = "git@github.com:rustyhorde/repomon.git"
+//!
+//!     [[repos.repomon.branch]]
+//!     name = "master"
+//!    interval = "1m"
+//!     remotes = ["origin", "gh"]
+//!
+//!     [[repos.repomon.branch]]
+//!     name = "feature/testing"
 //!     interval = "1m"
+//!     remotes = ["origin", "gh"]
 //!     "#;
 //!
-//!     // Serialize the TOML above into a `Branches` struct.
+//!     // Serialize the TOML above into a `Repomon` struct.
 //!     let mut reader = Cursor::new(test_toml);
-//!     let branches = read_toml(&mut reader)?;
+//!     let repomon = read_toml(&mut reader)?;
 //!
-//!     // Check the `Branches` struct.
-//!     let branch_map = branches.branch_map();
-//!     assert_eq!(branch_map.keys().len(), 3);
-//!     assert!(branch_map.contains_key("repomon"));
-//!     assert!(branch_map.contains_key("repomon-config"));
-//!     assert!(branch_map.contains_key("blah"));
+//!     // Check the `Repomon` struct.
+//!     let repos = repomon.repos();
+//!     assert_eq!(repos.keys().len(), 2);
+//!     assert!(repos.contains_key("repomon"));
+//!     assert!(repos.contains_key("ar2"));
 //!
-//!     // Check we have the right number of branch definitions per repo.
-//!     let mut branches = branch_map.get("repomon").ok_or("invalid key")?;
-//!     assert_eq!(branches.len(), 2);
-//!     branches = branch_map.get("repomon-config").ok_or("invalid key")?;
-//!     assert_eq!(branches.len(), 1);
-//!     branches = branch_map.get("blah").ok_or("invalid key")?;
-//!     assert_eq!(branches.len(), 1);
 //! #   Ok(())
 //! # }
 //! ```
@@ -80,7 +87,7 @@
 //! # extern crate repomon;
 //! # extern crate toml;
 //! #
-//! # use repomon::{write_toml, Branch, Branches};
+//! # use repomon::{write_toml, Branch, Remote, Repo, Repomon};
 //! # use std::collections::BTreeMap;
 //! # use std::io::Cursor;
 //! #
@@ -88,53 +95,101 @@
 //! #     error_chain!{
 //! #         foreign_links {
 //! #             Io(::std::io::Error);
-//! #             RepomonConfig(::repomon::Error);
+//! #             Repomon(::repomon::Error);
 //! #             TomlDe(::toml::de::Error);
 //! #             TomlSer(::toml::ser::Error);
 //! #         }
 //! #     }
 //! # }
 //! #
-//! # const TEST_TOML: &str = r#"[[branch.blah]]
-//! # name = "origin/master"
-//! # interval = "1m"
+//! # const TEST_TOML: &str = r#"basedir = "/home/jozias/projects"
+//! # [[repos.ar2.remotes]]
+//! # name = "origin"
+//! # url = "jozias@jasonozias.com:repos/ar2.git"
 //! #
-//! # [[branch.repomon]]
-//! # name = "origin/master"
+//! # [[repos.ar2.branch]]
+//! # name = "master"
 //! # interval = "1m"
+//! # remotes = ["origin"]
+//! # [[repos.repomon.remotes]]
+//! # name = "origin"
+//! # url = "jozias@jasonozias.com:repos/repomon.git"
 //! #
-//! # [[branch.repomon]]
-//! # name = "origin/feature/testing"
-//! # interval = "1m"
+//! # [[repos.repomon.remotes]]
+//! # name = "gh"
+//! # url = "git@github.com:rustyhorde/repomon.git"
 //! #
-//! # [[branch.repomon-config]]
-//! # name = "origin/master"
+//! # [[repos.repomon.branch]]
+//! # name = "master"
 //! # interval = "1m"
+//! # remotes = ["origin", "gh"]
+//! #
+//! # [[repos.repomon.branch]]
+//! # name = "feature/testing"
+//! # interval = "1m"
+//! # remotes = ["origin", "gh"]
 //! # "#;
 //! #
-//! # fn main() {}
+//! # fn main() {
+//! #     write().expect("unable to write");
+//! # }
+//! #
+//! # fn remotes() -> Vec<Remote> {
+//! #     let mut origin: Remote = Default::default();
+//! #     origin.set_name("origin".to_string());
+//! #     origin.set_url("jozias@jasonozias.com:repos/repomon.git".to_string());
+//! #
+//! #     let mut github: Remote = Default::default();
+//! #     github.set_name("gh".to_string());
+//! #     github.set_url("git@github.com:rustyhorde/repomon.git".to_string());
+//! #
+//! #     vec![origin, github]
+//! # }
 //! #
 //! # fn write() -> error::Result<()> {
-//!       // Setup the `Branches` struct.
-//!       let mut master: Branch = Default::default();
-//!       master.set_name("origin/master".to_string());
-//!       master.set_interval("1m".to_string());
-//!
-//!       let mut feature_testing: Branch = Default::default();
-//!       feature_testing.set_name("origin/feature/testing".to_string());
-//!       feature_testing.set_interval("1m".to_string());
-//!
-//!       let repomon_branches = vec![master.clone(), feature_testing];
-//!       let blah_branches = vec![master.clone()];
-//!       let repomon_branches = vec![master];
-//!
-//!       let mut branch_map = BTreeMap::new();
-//!       branch_map.insert("repomon".to_string(), repomon_branches.clone());
-//!       branch_map.insert("repomon-config".to_string(), repomon_branches);
-//!       branch_map.insert("blah".to_string(), blah_branches);
-//!
-//!       let mut branches: Branches = Default::default();
-//!       branches.set_branch_map(branch_map);
+//! #      // Setup the `Repomon` struct.
+//! #      let remotes_to_monitor = vec!["origin", "gh"]
+//! #          .iter()
+//! #          .map(|x| x.to_string())
+//! #          .collect::<Vec<String>>();
+//! #
+//! #      let mut master: Branch = Default::default();
+//! #      master.set_name("master".to_string());
+//! #      master.set_interval("1m".to_string());
+//! #      master.set_remotes(remotes_to_monitor.clone());
+//! #
+//! #      let mut ar2_master: Branch = Default::default();
+//! #      ar2_master.set_name("master".to_string());
+//! #      ar2_master.set_interval("1m".to_string());
+//! #      ar2_master.set_remotes(vec!["origin"].iter().map(|x| x.to_string()).collect());
+//! #
+//! #      let mut feature_testing: Branch = Default::default();
+//! #      feature_testing.set_name("feature/testing".to_string());
+//! #      feature_testing.set_interval("1m".to_string());
+//! #      feature_testing.set_remotes(remotes_to_monitor);
+//! #
+//! #      let mut ar2_origin: Remote = Default::default();
+//! #      ar2_origin.set_name("origin".to_string());
+//! #      ar2_origin.set_url("jozias@jasonozias.com:repos/ar2.git".to_string());
+//! #
+//! #      let repomon_branches = vec![master, feature_testing];
+//! #      let ar2_branches = vec![ar2_master];
+//! #
+//! #      let mut repomon_repo: Repo = Default::default();
+//! #      repomon_repo.set_remotes(remotes());
+//! #      repomon_repo.set_branch(repomon_branches);
+//! #
+//! #      let mut ar2_repo: Repo = Default::default();
+//! #      ar2_repo.set_remotes(vec![ar2_origin]);
+//! #      ar2_repo.set_branch(ar2_branches);
+//! #
+//! #      let mut repo_map = BTreeMap::new();
+//! #      repo_map.insert("ar2".to_string(), ar2_repo);
+//! #      repo_map.insert("repomon".to_string(), repomon_repo);
+//! #
+//!       let mut repomon: Repomon = Default::default();
+//!       repomon.set_basedir("/home/jozias/projects".to_string());
+//!       repomon.set_repos(repo_map);
 //!
 //!       // Write the TOML to the given buf.
 //!       let mut buf = [0; 5000];
@@ -142,11 +197,15 @@
 //!       // Wrapped to drop mutable borrow.
 //!       {
 //!         let mut writer = Cursor::new(&mut buf[..]);
-//!         write_toml(&branches, &mut writer)?;
+//!         write_toml(&repomon, &mut writer)?;
 //!       }
 //!
 //!       // Check that the result is the same as the TOML above.
-//!       assert_eq!(TEST_TOML, String::from_utf8_lossy(&buf));
+//!       let filtered = buf.iter().filter(|x| **x > 0).cloned().collect::<Vec<u8>>();
+//!       assert_eq!(
+//!           TEST_TOML,
+//!           String::from_utf8(filtered).expect("Invalid UTF-8 in result")
+//!       );
 //! #   Ok(())
 //! # }
 //! ```
@@ -161,8 +220,10 @@ extern crate serde_derive;
 #[cfg(test)]
 extern crate bincode;
 extern crate toml;
+extern crate url;
+extern crate uuid;
 
-pub use config::{read_toml, write_toml, Branch, Branches};
+pub use config::{read_toml, write_toml, Branch, Remote, Repo, Repomon};
 pub use error::{Error, ErrorKind};
 pub use message::Message;
 

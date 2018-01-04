@@ -13,35 +13,62 @@ use std::fmt;
 use std::io::{Read, Write};
 use toml;
 
-/// A map of repo name to branch definitions.
-#[derive(Clone, Debug, Default, Deserialize, Getters, Serialize, Setters)]
-pub struct Branches {
-    /// A map of repo name to a vector branches to monitor.
+/// The base repomon config.
+#[derive(Clone, Debug, Default, Deserialize, Getters, PartialEq, Serialize, Setters)]
+pub struct Repomon {
+    /// The base directory to look for repositories.
     #[get = "pub"]
     #[set = "pub"]
-    #[serde(rename = "branch")]
-    branch_map: BTreeMap<String, Vec<Branch>>,
+    basedir: String,
+    /// A map of repository name to repository definitions.
+    #[get = "pub"]
+    #[set = "pub"]
+    repos: BTreeMap<String, Repo>,
 }
 
-impl fmt::Display for Branches {
+impl fmt::Display for Repomon {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(fmt, "Branches {{")?;
+        writeln!(fmt, "Repomon {{")?;
 
-        for (repo, branches) in &self.branch_map {
-            for branch in branches {
-                writeln!(fmt, "    {} -- {}", repo, branch)?;
-            }
+        for (repo_name, repo) in &self.repos {
+            writeln!(fmt, "    {} -- {}", repo_name, repo)?;
         }
 
         write!(fmt, "}}")
     }
 }
 
+/// A repomon repository definition
+#[derive(Clone, Debug, Default, Deserialize, Getters, PartialEq, Serialize, Setters)]
+pub struct Repo {
+    /// The repository remotes for branch comparison.
+    #[get = "pub"]
+    #[set = "pub"]
+    remotes: Vec<Remote>,
+    /// The repository branches to monitor.
+    #[get = "pub"]
+    #[set = "pub"]
+    branch: Vec<Branch>,
+}
+
+impl fmt::Display for Repo {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "Repo {{")?;
+        for remote in &self.remotes {
+            write!(fmt, "    {}", remote)?;
+        }
+
+        for branch in &self.branch {
+            write!(fmt, "    {}", branch)?;
+        }
+        write!(fmt, "}}")
+    }
+}
+
 /// A branch to monitor for changes.
-#[derive(Clone, Debug, Default, Deserialize, Getters, Serialize, Setters)]
+#[derive(Clone, Debug, Default, Deserialize, Getters, PartialEq, Serialize, Setters)]
 pub struct Branch {
-    /// The fully qualified branch name, e.g. `origin/master` for the remote
-    /// or `master` for the local.
+    /// The branch name, i.e. 'master'
     #[get = "pub"]
     #[set = "pub"]
     name: String,
@@ -49,6 +76,10 @@ pub struct Branch {
     #[get = "pub"]
     #[set = "pub"]
     interval: String,
+    /// The list of remotes to check this branch against.
+    #[get = "pub"]
+    #[set = "pub"]
+    remotes: Vec<String>,
 }
 
 impl fmt::Display for Branch {
@@ -57,8 +88,27 @@ impl fmt::Display for Branch {
     }
 }
 
-/// Read TOML from the given `reader` and deserialize into a `Branches` struct.
-pub fn read_toml<R>(reader: &mut R) -> Result<Branches>
+/// A remote to check a branch against
+#[derive(Clone, Debug, Default, Deserialize, Getters, PartialEq, Serialize, Setters)]
+pub struct Remote {
+    /// The remote name, i.e. 'origin'
+    #[get = "pub"]
+    #[set = "pub"]
+    name: String,
+    /// The remote url
+    #[get = "pub"]
+    #[set = "pub"]
+    url: String,
+}
+
+impl fmt::Display for Remote {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "{}: {}", self.name, self.url)
+    }
+}
+
+/// Read TOML from the given `reader` and deserialize into a `Repomon` struct.
+pub fn read_toml<R>(reader: &mut R) -> Result<Repomon>
 where
     R: Read,
 {
@@ -72,8 +122,8 @@ where
     }
 }
 
-/// Write TOML serialized from the `Branches` struct to the given `writer`.
-pub fn write_toml<W>(repos: &Branches, writer: &mut W) -> Result<()>
+/// Write TOML serialized from the `Repomon` struct to the given `writer`.
+pub fn write_toml<W>(repos: &Repomon, writer: &mut W) -> Result<()>
 where
     W: Write,
 {
@@ -83,88 +133,134 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{Branch, Branches};
+    use super::{Branch, Remote, Repo, Repomon};
     use std::collections::BTreeMap;
     use std::io::Cursor;
     use toml;
 
-    const TEST_TOML: &str = r#"[[branch.blah]]
-name = "origin/master"
-interval = "1m"
+    const TEST_TOML: &str = r#"basedir = "/home/jozias/projects"
+[[repos.ar2.remotes]]
+name = "origin"
+url = "jozias@jasonozias.com:repos/ar2.git"
 
-[[branch.repomon]]
-name = "origin/master"
+[[repos.ar2.branch]]
+name = "master"
 interval = "1m"
+remotes = ["origin"]
+[[repos.repomon.remotes]]
+name = "origin"
+url = "jozias@jasonozias.com:repos/repomon.git"
 
-[[branch.repomon]]
-name = "origin/feature/testing"
-interval = "1m"
+[[repos.repomon.remotes]]
+name = "gh"
+url = "git@github.com:rustyhorde/repomon.git"
 
-[[branch.repomon-config]]
-name = "origin/master"
+[[repos.repomon.branch]]
+name = "master"
 interval = "1m"
+remotes = ["origin", "gh"]
+
+[[repos.repomon.branch]]
+name = "feature/testing"
+interval = "1m"
+remotes = ["origin", "gh"]
 "#;
 
-    fn setup_branches() -> Branches {
+    fn remotes() -> Vec<Remote> {
+        let mut origin: Remote = Default::default();
+        origin.set_name("origin".to_string());
+        origin.set_url("jozias@jasonozias.com:repos/repomon.git".to_string());
+
+        let mut github: Remote = Default::default();
+        github.set_name("gh".to_string());
+        github.set_url("git@github.com:rustyhorde/repomon.git".to_string());
+
+        vec![origin, github]
+    }
+
+    fn setup_repomon() -> Repomon {
+        let remotes_to_monitor = vec!["origin", "gh"]
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>();
         let master = Branch {
-            name: "origin/master".to_string(),
+            name: "master".to_string(),
             interval: "1m".to_string(),
+            remotes: remotes_to_monitor.clone(),
+        };
+
+        let ar2_master = Branch {
+            name: "master".to_string(),
+            interval: "1m".to_string(),
+            remotes: vec!["origin"].iter().map(|x| x.to_string()).collect(),
         };
 
         let feature_testing = Branch {
-            name: "origin/feature/testing".to_string(),
+            name: "feature/testing".to_string(),
             interval: "1m".to_string(),
+            remotes: remotes_to_monitor,
         };
 
-        let repomon_branches = vec![master.clone(), feature_testing];
-        let blah_branches = vec![master.clone()];
-        let repomon_config_branches = vec![master];
+        let mut ar2_origin: Remote = Default::default();
+        ar2_origin.set_name("origin".to_string());
+        ar2_origin.set_url("jozias@jasonozias.com:repos/ar2.git".to_string());
 
-        let mut branch_map = BTreeMap::new();
-        branch_map.insert("repomon".to_string(), repomon_branches);
-        branch_map.insert("repomon-config".to_string(), repomon_config_branches);
-        branch_map.insert("blah".to_string(), blah_branches);
+        let repomon_branches = vec![master, feature_testing];
+        let ar2_branches = vec![ar2_master];
 
-        Branches {
-            branch_map: branch_map,
+        let repomon_repo = Repo {
+            remotes: remotes(),
+            branch: repomon_branches,
+        };
+
+        let ar2_repo = Repo {
+            remotes: vec![ar2_origin],
+            branch: ar2_branches,
+        };
+
+        let mut repo_map = BTreeMap::new();
+        repo_map.insert("ar2".to_string(), ar2_repo);
+        repo_map.insert("repomon".to_string(), repomon_repo);
+
+        Repomon {
+            basedir: "/home/jozias/projects".to_string(),
+            repos: repo_map,
         }
     }
 
-    fn test_branches(branches: &Branches) {
-        let branch_map = branches.branch_map();
-        assert_eq!(branch_map.keys().len(), 3);
-        assert!(branch_map.contains_key("repomon"));
-        assert!(branch_map.contains_key("repomon-config"));
-        assert!(branch_map.contains_key("blah"));
+    fn test_repomon(repomon: &Repomon) {
+        let repo_map = repomon.repos();
+        assert_eq!(repo_map.keys().len(), 2);
+        assert!(repo_map.contains_key("repomon"));
+        assert!(repo_map.contains_key("ar2"));
 
-        let mut branches = branch_map
+        let repomon = repo_map
             .get("repomon")
             .ok_or("invalid key")
             .expect("Unable to lookup repomon repo");
-        assert_eq!(branches.len(), 2);
-        branches = branch_map
-            .get("repomon-config")
+        assert_eq!(repomon.remotes().len(), 2);
+        assert_eq!(repomon.branch().len(), 2);
+
+        let ar2 = repo_map
+            .get("ar2")
             .ok_or("invalid key")
-            .expect("Unable to lookup repomon repo");
-        assert_eq!(branches.len(), 1);
-        branches = branch_map
-            .get("blah")
-            .ok_or("invalid key")
-            .expect("Unable to lookup repomon repo");
-        assert_eq!(branches.len(), 1);
+            .expect("Unable to lookup ar2 repo");
+        assert_eq!(ar2.remotes().len(), 1);
+        assert_eq!(ar2.branch().len(), 1);
     }
 
     #[test]
     fn serialize() {
-        let branches = setup_branches();
-        let toml = toml::to_string(&branches).expect("Unable to serialize to TOML");
+        let repomon = setup_repomon();
+        let toml = toml::to_string(&repomon).expect("Unable to serialize to TOML");
         assert_eq!(TEST_TOML, toml);
     }
 
     #[test]
     fn deserialize() {
-        let branches: Branches = toml::from_str(TEST_TOML).expect("Unable to deserialize TOML");
-        test_branches(&branches);
+        let repomon: Repomon = toml::from_str(TEST_TOML).expect("Unable to deserialize TOML");
+        assert_eq!(repomon.basedir(), "/home/jozias/projects");
+        test_repomon(&repomon);
     }
 
     #[test]
@@ -181,7 +277,7 @@ interval = "1m"
         let mut reader = Cursor::new(TEST_TOML);
 
         match super::read_toml(&mut reader) {
-            Ok(branches) => test_branches(&branches),
+            Ok(repomon) => test_repomon(&repomon),
             Err(_) => assert!(false, "Unable to parse TOML"),
         }
     }
@@ -189,10 +285,10 @@ interval = "1m"
     #[test]
     fn write_toml() {
         let mut buf = [0; 5000];
-        let branches = setup_branches();
+        let repomon = setup_repomon();
         {
             let mut writer = Cursor::new(&mut buf[..]);
-            match super::write_toml(&branches, &mut writer) {
+            match super::write_toml(&repomon, &mut writer) {
                 Ok(_) => {}
                 Err(_) => assert!(false, "Unable to write TOML"),
             }
