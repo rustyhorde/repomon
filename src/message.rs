@@ -35,7 +35,11 @@ pub struct Message {
 
 impl fmt::Display for Message {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "{}: {} -- {}", self.uuid, self.repo, self.branch)
+        write!(
+            fmt,
+            "{} ({}): {} -- {}",
+            self.uuid, self.count, self.repo, self.branch
+        )
     }
 }
 
