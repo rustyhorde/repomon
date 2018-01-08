@@ -72,7 +72,7 @@ mod test {
         message.set_count(0);
 
         let msg_bytes = serialize(&message, Infinite).expect("unable to serialize message");
-        let mut expected = Vec::new();
+        let mut expected: Vec<u8> = Vec::new();
         expected.extend(MSG_BYTES.iter());
         assert_eq!(msg_bytes, expected);
     }

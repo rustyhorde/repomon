@@ -8,6 +8,7 @@
 
 //! Configuration Management for repomon
 use error::Result;
+use regex::Regex;
 use std::collections::BTreeMap;
 use std::fmt;
 use std::io::{Read, Write};
@@ -80,6 +81,36 @@ pub struct Branch {
     #[get = "pub"]
     #[set = "pub"]
     remotes: Vec<String>,
+}
+
+impl Branch {
+    pub fn interval_to_ms(&self) -> Result<usize> {
+        let interval_re = Regex::new(r"^(\d+)(s|m|h|d)$")?;
+        if interval_re.is_match(&self.interval) {
+            if let Some(caps) = interval_re.captures(&self.interval) {
+                if caps.len() != 3 {
+                    return Err(format!("invalid branch interval: {}", self.interval).into());
+                }
+
+                let units = caps.get(2).map_or("", |m| m.as_str());
+                let value = caps.get(1).map_or("", |m| m.as_str()).parse::<usize>()?;
+
+                let factor = match units {
+                    "s" => 1000,
+                    "m" => 60_000,
+                    "h" => 3_600_000,
+                    "d" => 86_400_000,
+                    _ => return Err(format!("invalid branch interval: {}", self.interval).into()),
+                };
+
+                Ok(value * factor)
+            } else {
+                return Err(format!("invalid branch interval: {}", self.interval).into());
+            }
+        } else {
+            Err(format!("invalid branch interval: {}", self.interval).into())
+        }
+    }
 }
 
 impl fmt::Display for Branch {
@@ -299,5 +330,34 @@ remotes = ["origin", "gh"]
             TEST_TOML,
             String::from_utf8(filtered).expect("Invalid UTF-8 in result")
         );
+    }
+
+    fn check_ms_result(expected: usize, branch: &Branch) {
+        if let Ok(ms) = branch.interval_to_ms() {
+            assert_eq!(expected, ms);
+        } else {
+            assert!(false, "invalid branch interval");
+        }
+    }
+
+    #[test]
+    fn interval_to_ms() {
+        let mut branch: Branch = Default::default();
+        branch.set_interval("1s".to_string());
+        check_ms_result(1000, &branch);
+        branch.set_interval("5s".to_string());
+        check_ms_result(5000, &branch);
+        branch.set_interval("1m".to_string());
+        check_ms_result(60_000, &branch);
+        branch.set_interval("5m".to_string());
+        check_ms_result(300_000, &branch);
+        branch.set_interval("1h".to_string());
+        check_ms_result(3_600_000, &branch);
+        branch.set_interval("5h".to_string());
+        check_ms_result(18_000_000, &branch);
+        branch.set_interval("1d".to_string());
+        check_ms_result(86_400_000, &branch);
+        branch.set_interval("5d".to_string());
+        check_ms_result(432_000_000, &branch);
     }
 }

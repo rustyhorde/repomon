@@ -18,6 +18,7 @@ serde_derive = "1.0.26"
 toml = "0.4.5"
 uuid = { version = "0.5.1", features = ["serde", "use_std", "v5"]}
 url = "1.6.0"
+regex = "0.2.5"
 
 [dev-dependencies]
 bincode = "0.9.2"

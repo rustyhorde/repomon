@@ -219,6 +219,7 @@ extern crate serde_derive;
 
 #[cfg(test)]
 extern crate bincode;
+extern crate regex;
 extern crate toml;
 extern crate url;
 extern crate uuid;

@@ -10,6 +10,8 @@
 error_chain!{
     foreign_links {
         Io(::std::io::Error);
+        ParseInt(::std::num::ParseIntError);
+        Regex(::regex::Error);
         TomlDe(::toml::de::Error);
         TomlSer(::toml::ser::Error);
     }
