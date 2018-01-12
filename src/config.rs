@@ -84,6 +84,7 @@ pub struct Branch {
 }
 
 impl Branch {
+    /// Convert an interval to milliseconds
     pub fn interval_to_ms(&self) -> Result<usize> {
         let interval_re = Regex::new(r"^(\d+)(s|m|h|d)$")?;
         if interval_re.is_match(&self.interval) {
