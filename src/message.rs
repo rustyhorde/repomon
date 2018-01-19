@@ -161,12 +161,18 @@ mod test {
                         match jdx {
                             0 => {
                                 assert_eq!(remote.name(), "gh");
-                                assert_eq!(message, "Your branch is up to date with 'gh/feature/test'");
-                            },
+                                assert_eq!(
+                                    message,
+                                    "Your branch is up to date with 'gh/feature/test'"
+                                );
+                            }
                             1 => {
                                 assert_eq!(remote.name(), "origin");
-                                assert_eq!(message, "Your branch is up to date with 'origin/feature/test'");
-                            },
+                                assert_eq!(
+                                    message,
+                                    "Your branch is up to date with 'origin/feature/test'"
+                                );
+                            }
                             _ => assert!(false),
                         }
                     }
@@ -181,11 +187,14 @@ mod test {
                             0 => {
                                 assert_eq!(remote.name(), "gh");
                                 assert_eq!(message, "Your branch is up to date with 'gh/master'");
-                            },
+                            }
                             1 => {
                                 assert_eq!(remote.name(), "origin");
-                                assert_eq!(message, "Your branch is up to date with 'origin/master'");
-                            },
+                                assert_eq!(
+                                    message,
+                                    "Your branch is up to date with 'origin/master'"
+                                );
+                            }
                             _ => assert!(false),
                         }
                     }
