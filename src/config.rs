@@ -162,7 +162,8 @@ where
     W: Write,
 {
     let toml = toml::to_string(&repos)?;
-    Ok(writer.write_all(toml.as_bytes())?)
+    writer.write_all(toml.as_bytes())?;
+    Ok(())
 }
 
 #[cfg(test)]

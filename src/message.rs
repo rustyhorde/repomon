@@ -31,7 +31,7 @@ pub struct Message {
 
 impl fmt::Display for Message {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        for (ref branch, ref remotes) in &self.messages {
+        for (branch, remotes) in &self.messages {
             let len = remotes.len();
             for (idx, (remote, message)) in remotes.iter().enumerate() {
                 write!(
