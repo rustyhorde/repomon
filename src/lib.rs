@@ -226,7 +226,7 @@ extern crate uuid;
 
 pub use config::{read_toml, write_toml, Branch, Remote, Repo, Repomon};
 pub use error::{Error, ErrorKind};
-pub use message::Message;
+pub use message::{Category, Message};
 
 mod config;
 mod error;
