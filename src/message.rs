@@ -31,6 +31,21 @@ impl Default for Category {
     }
 }
 
+impl fmt::Display for Category {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match *self {
+                Category::Info => "Info",
+                Category::Ahead => "Ahead",
+                Category::Behind => "Behind",
+                Category::UpToDate => "UpToDate",
+            }
+        )
+    }
+}
+
 /// Struct sent via tx to clients;
 #[derive(Clone, Debug, Default, Deserialize, Getters, MutGetters, Serialize, Setters)]
 pub struct Message {
@@ -59,8 +74,9 @@ impl fmt::Display for Message {
             for (idx, (remote, message)) in remotes.iter().enumerate() {
                 write!(
                     fmt,
-                    "{}: {}/{} ({}) - {}",
+                    "{} {}: {}/{} ({}) - {}",
                     self.uuid,
+                    self.category,
                     self.repo,
                     branch.name(),
                     remote.name(),
