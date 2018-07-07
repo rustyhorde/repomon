@@ -67,8 +67,20 @@ impl fmt::Display for Repo {
 }
 
 /// A branch to monitor for changes.
-#[derive(Clone, Debug, Default, Deserialize, Eq, Getters, Hash, Ord, PartialEq, PartialOrd,
-         Serialize, Setters)]
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    Deserialize,
+    Eq,
+    Getters,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd,
+    Serialize,
+    Setters,
+)]
 pub struct Branch {
     /// The branch name, i.e. 'master'
     #[get = "pub"]
@@ -122,8 +134,20 @@ impl fmt::Display for Branch {
 }
 
 /// A remote to check a branch against
-#[derive(Clone, Debug, Default, Deserialize, Eq, Getters, Hash, Ord, PartialEq, PartialOrd,
-         Serialize, Setters)]
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    Deserialize,
+    Eq,
+    Getters,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd,
+    Serialize,
+    Setters,
+)]
 pub struct Remote {
     /// The remote name, i.e. 'origin'
     #[get = "pub"]
