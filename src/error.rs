@@ -7,7 +7,7 @@
 // modified, or distributed except according to those terms.
 
 //! `repomon-config` errors
-error_chain!{
+error_chain! {
     foreign_links {
         Io(::std::io::Error);
         ParseInt(::std::num::ParseIntError);
