@@ -84,7 +84,7 @@ impl fmt::Display for Message {
                 )?;
 
                 if idx < len - 1 {
-                    write!(fmt, "\n")?;
+                    writeln!(fmt)?;
                 }
             }
         }
@@ -213,7 +213,7 @@ mod test {
                                     "Your branch is up to date with 'origin/feature/test'"
                                 );
                             }
-                            _ => assert!(false),
+                            _ => unreachable!(),
                         }
                     }
                 }
@@ -235,11 +235,11 @@ mod test {
                                     "Your branch is up to date with 'origin/master'"
                                 );
                             }
-                            _ => assert!(false),
+                            _ => unreachable!(),
                         }
                     }
                 }
-                _ => assert!(false),
+                _ => unreachable!(),
             }
         }
     }

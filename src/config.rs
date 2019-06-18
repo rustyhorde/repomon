@@ -326,8 +326,8 @@ remotes = ["origin", "gh"]
     fn empty_reader() {
         let mut cursor = Cursor::new(vec![]);
         match super::read_toml(&mut cursor) {
-            Ok(_) => assert!(false, "0 bytes read should error"),
-            Err(_) => assert!(true),
+            Ok(_) => unreachable!("0 bytes read should error"),
+            Err(e) => assert_eq!(format!("{}", e), "Unable to read any bytes from the reader"),
         }
     }
 
@@ -337,7 +337,7 @@ remotes = ["origin", "gh"]
 
         match super::read_toml(&mut reader) {
             Ok(repomon) => test_repomon(&repomon),
-            Err(_) => assert!(false, "Unable to parse TOML"),
+            Err(_) => unreachable!("Unable to parse TOML"),
         }
     }
 
@@ -349,7 +349,7 @@ remotes = ["origin", "gh"]
             let mut writer = Cursor::new(&mut buf[..]);
             match super::write_toml(&repomon, &mut writer) {
                 Ok(_) => {}
-                Err(_) => assert!(false, "Unable to write TOML"),
+                Err(_) => unreachable!("Unable to write TOML"),
             }
         }
 
@@ -364,7 +364,7 @@ remotes = ["origin", "gh"]
         if let Ok(ms) = branch.interval_to_ms() {
             assert_eq!(expected, ms);
         } else {
-            assert!(false, "invalid branch interval");
+            unreachable!("invalid branch interval");
         }
     }
 
